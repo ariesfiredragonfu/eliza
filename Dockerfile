@@ -51,5 +51,10 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/characters ./characters
 
+# Create a non-root user and set ownership
+RUN groupadd -r eliza && useradd -r -g eliza -m eliza && \
+    chown -R eliza:eliza /app
+USER eliza
+
 # Set the command to run the application
 CMD ["pnpm", "start"]

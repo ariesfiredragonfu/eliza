@@ -1184,7 +1184,7 @@ export const generateImage = async (
     try {
         if (runtime.imageModelProvider === ModelProviderName.HEURIST) {
             const response = await fetch(
-                "http://sequencer.heurist.xyz/submit_job",
+                "https://sequencer.heurist.xyz/submit_job",
                 {
                     method: "POST",
                     headers: {
