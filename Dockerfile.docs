@@ -43,14 +43,21 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
 COPY docs/ /opt/docusaurus/
 COPY packages/ /opt/packages/
 
-## Required buy docusaurus [ERROR] Loading of version failed for version current
-COPY .git/ /opt/.git/
+## Required by docusaurus [ERROR] Loading of version failed for version current
+COPY .git/HEAD /opt/.git/HEAD
+COPY .git/refs/ /opt/.git/refs/
 
 # Build from sources
 RUN pnpm run build
 
 # Stage 3a: Serve with `docusaurus serve`.
 FROM prod AS serve
+
+# Create a non-root user and set ownership
+RUN groupadd -r eliza && useradd -r -g eliza -m eliza && \
+    chown -R eliza:eliza /opt/docusaurus
+USER eliza
+
 ## Expose the port that Docusaurus will run on.
 EXPOSE 3000
 ## Run the production server.
