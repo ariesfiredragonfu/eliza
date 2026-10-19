@@ -221,6 +221,30 @@ export function findViewFunction(text: string): ViewFunctionName | null {
     return best ? best.name : null;
 }
 
+const TOKEN_DETAIL_FUNCTIONS: ViewFunctionName[] = ["name", "symbol", "decimals"];
+
+const TOKEN_DETAILS_RE =
+    /\btoken\s+(details|info|information|metadata)\b|\b(details|info|information|metadata)\s+(for|of|on|about)\s+(the\s+|this\s+|that\s+)?(token|contract)\b/i;
+
+/**
+ * Every allowed view the text asks for, in the order it names them.
+ * A request for token details with no function named reads name, symbol,
+ * and decimals.
+ */
+export function findViewFunctions(text: string): ViewFunctionName[] {
+    const found: { name: ViewFunctionName; index: number }[] = [];
+    for (const matcher of VIEW_MATCHERS) {
+        const match = matcher.re.exec(text);
+        if (match) {
+            found.push({ name: matcher.name, index: match.index });
+        }
+    }
+    if (found.length === 0) {
+        return TOKEN_DETAILS_RE.test(text) ? [...TOKEN_DETAIL_FUNCTIONS] : [];
+    }
+    return found.sort((a, b) => a.index - b.index).map((f) => f.name);
+}
+
 export function viewCallData(name: ViewFunctionName): string {
     return VIEW_CALLS[name].data;
 }
@@ -326,6 +350,34 @@ export async function readSandboxView(
         functionName: name,
         value: decodeViewResult(name, data),
     };
+}
+
+/**
+ * Reads several allowed views on one contract. Each one is a separate
+ * eth_call. A failed view is reported in errors and does not stop the rest.
+ */
+export async function readSandboxViews(
+    rpcUrl: string,
+    address: string,
+    names: ViewFunctionName[]
+): Promise<{
+    address: string;
+    values: Partial<Record<ViewFunctionName, string>>;
+    errors: Partial<Record<ViewFunctionName, string>>;
+}> {
+    assertSandboxRpcUrl(rpcUrl);
+    const checked = assertContractAddress(address);
+    const values: Partial<Record<ViewFunctionName, string>> = {};
+    const errors: Partial<Record<ViewFunctionName, string>> = {};
+    for (const name of names) {
+        try {
+            values[name] = (await readSandboxView(rpcUrl, checked, name)).value;
+        } catch (error) {
+            errors[name] =
+                error instanceof Error ? error.message : "View call failed";
+        }
+    }
+    return { address: checked, values, errors };
 }
 
 export async function readSandboxCode(

@@ -41,8 +41,20 @@ async function probe(): Promise<"ok" | "down" | "starting"> {
         const body = (await response.json()) as { status?: string };
         return body.status === "ok" ? "ok" : "starting";
     } catch (error) {
-        const code = (error as { cause?: { code?: string } }).cause?.code;
-        if (code === "ECONNREFUSED" || code === "ENOTFOUND") return "down";
+        const err = error as { name?: string; cause?: { code?: string } };
+        const code = err.cause?.code;
+        // A connect timeout means nothing is listening yet (on Windows a closed
+        // localhost port can stall past PROBE_TIMEOUT_MS instead of refusing).
+        // Treat it as down so the server gets launched.
+        if (
+            code === "ECONNREFUSED" ||
+            code === "ENOTFOUND" ||
+            code === "ETIMEDOUT" ||
+            code === "UND_ERR_CONNECT_TIMEOUT" ||
+            err.name === "TimeoutError"
+        ) {
+            return "down";
+        }
         return "starting";
     }
 }

@@ -9,10 +9,12 @@ import {
     faucetInstructions,
     findContractAddress,
     findViewFunction,
+    findViewFunctions,
     formatWei,
     readSandboxCode,
     readSandboxStatus,
     readSandboxView,
+    readSandboxViews,
     summarizeBytecode,
     viewCallData,
 } from "../rpc.ts";
@@ -170,6 +172,21 @@ describe("view calls", () => {
         expect(findContractAddress(`key ${PRIVATE_KEY} name`)).toBeNull();
     });
 
+    it("finds every named view in order, and token details as three", () => {
+        expect(
+            findViewFunctions(`${ADDRESS} name, symbol and decimals`)
+        ).toEqual(["name", "symbol", "decimals"]);
+        expect(findViewFunctions(`decimals and name of ${ADDRESS}`)).toEqual(
+            ["decimals", "name"]
+        );
+        expect(findViewFunctions(`token details for ${ADDRESS}`)).toEqual([
+            "name",
+            "symbol",
+            "decimals",
+        ]);
+        expect(findViewFunctions(`username ${ADDRESS}`)).toEqual([]);
+    });
+
     it("uses the four standard selectors and no arguments", () => {
         expect(viewCallData("name")).toBe("0x06fdde03");
         expect(viewCallData("symbol")).toBe("0x95d89b41");
@@ -217,6 +234,60 @@ describe("view calls", () => {
             { to: ADDRESS, data: "0x06fdde03" },
             "latest",
         ]);
+    });
+});
+
+describe("multi-view reads", () => {
+    it("reads name, symbol and decimals with three eth_calls", async () => {
+        const bySelector: Record<string, string> = {
+            "0x06fdde03": abiString("USD Coin"),
+            "0x95d89b41": abiString("USDC"),
+            "0x313ce567": abiUint(6n),
+        };
+        const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+            const body = JSON.parse(String(init?.body)) as {
+                method: string;
+                params: [{ to: string; data: string }, string];
+            };
+            if (body.method !== "eth_call") {
+                throw new Error(`unexpected method ${body.method}`);
+            }
+            return {
+                ok: true,
+                json: async () => ({ result: bySelector[body.params[0].data] }),
+            };
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const views = await readSandboxViews("http://127.0.0.1:8545", ADDRESS, [
+            "name",
+            "symbol",
+            "decimals",
+        ]);
+
+        expect(views.values).toEqual({
+            name: "USD Coin",
+            symbol: "USDC",
+            decimals: "6",
+        });
+        expect(views.errors).toEqual({});
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        for (const call of fetchMock.mock.calls) {
+            const body = JSON.parse(String((call[1] as RequestInit).body)) as {
+                method: string;
+            };
+            expect(body.method).toBe("eth_call");
+        }
+    });
+
+    it("refuses a non-sandbox RPC before any call", async () => {
+        const fetchMock = mockRpc({});
+        await expect(
+            readSandboxViews("https://mainnet.infura.io/v3/key", ADDRESS, [
+                "name",
+            ])
+        ).rejects.toThrow(/BuildBear sandbox RPC or localhost/);
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });
 

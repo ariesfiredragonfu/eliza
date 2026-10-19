@@ -93,7 +93,10 @@ export function parseArguments(): {
     characters?: string;
 } {
     try {
-        return yargs(process.argv.slice(3))
+        // Skip node and the script path. Drop bare "--" separators so both
+        // `pnpm start --characters=...` and `pnpm start -- --characters=...` work.
+        const args = process.argv.slice(2).filter((arg) => arg !== "--");
+        return yargs(args)
             .option("character", {
                 type: "string",
                 description: "Path to the character JSON file",
