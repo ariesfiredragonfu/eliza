@@ -10,7 +10,7 @@ export const sandboxProvider: Provider = {
 
         try {
             const status = await readSandboxStatus(rpcUrl);
-            return `BuildBear sandbox chain id ${status.chainId} (${status.chainIdDecimal}), latest block ${status.blockNumberDecimal}. Read-only context. No transaction was sent.`;
+            return `Local sandbox chain id ${status.chainId} (${status.chainIdDecimal}), latest block ${status.blockNumberDecimal}. Read-only context. No transaction was sent.`;
         } catch (error) {
             const message =
                 error instanceof Error ? error.message : "Sandbox status failed";

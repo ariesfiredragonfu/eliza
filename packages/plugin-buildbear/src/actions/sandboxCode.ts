@@ -20,7 +20,7 @@ export const sandboxCodeAction: Action = {
     name: "SANDBOX_CODE",
     similes: ["READ_CONTRACT", "CONTRACT_CODE", "GET_CODE"],
     description:
-        "Read contract bytecode stored at an address on the BuildBear sandbox with eth_getCode. Read-only. Does not send a transaction or call a contract.",
+        "Read contract bytecode stored at an address on the local sandbox with eth_getCode. Read-only. Does not send a transaction or call a contract.",
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         const rpcUrl = runtime.getSetting("BUILDBEAR_RPC_URL");
         return (

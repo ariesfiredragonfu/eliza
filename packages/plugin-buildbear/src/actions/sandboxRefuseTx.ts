@@ -26,6 +26,10 @@ export const sandboxRefuseTxAction: Action = {
     ],
     description:
         "Refuse any request to send, transfer, swap, bridge, withdraw, pay, stake, approve, or sign. Replies that this agent is read-only and sends no transaction. Makes no RPC call.",
+    // Deterministic: runs for any fund-moving message even if the model picks
+    // NONE or another action, and only the refusal text is returned.
+    forceWhenValid: true,
+    suppressInitialMessage: true,
     validate: async (_runtime: IAgentRuntime, message: Memory) =>
         isFundMovingRequest(messageText(message)),
     handler: async (

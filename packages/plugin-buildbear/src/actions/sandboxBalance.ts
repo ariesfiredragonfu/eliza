@@ -11,7 +11,7 @@ export const sandboxBalanceAction: Action = {
     name: "SANDBOX_BALANCE",
     similes: ["CHECK_BALANCE", "TEST_ADDRESS_BALANCE"],
     description:
-        "Read the native balance of BUILDBEAR_TEST_ADDRESS on the BuildBear sandbox. Read-only. Does not send a transaction.",
+        "Read the native balance of BUILDBEAR_TEST_ADDRESS on the local sandbox. Read-only. Does not send a transaction.",
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         const rpcUrl = runtime.getSetting("BUILDBEAR_RPC_URL");
         const address = runtime.getSetting("BUILDBEAR_TEST_ADDRESS");

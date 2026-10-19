@@ -516,11 +516,11 @@ export async function createAgent(
 
     let goatPlugin: any | undefined;
 
-    const web3Specialist = character.name === "Kaito Web3";
+    const web3Specialist = character.name === "Forge Lens";
     const buildbearRpc = getSecret(character, "BUILDBEAR_RPC_URL");
     if (web3Specialist) {
         elizaLogger.info(
-            "Kaito Web3 specialist: sandbox plugin only; evm and goat stay off"
+            "Forge Lens specialist: sandbox plugin only; evm and goat stay off"
         );
     }
 

@@ -428,6 +428,13 @@ export interface Action {
 
     /** Whether to suppress the initial message when this action is used */
     suppressInitialMessage?: boolean;
+
+    /**
+     * When true and validate() passes for the incoming message, this action
+     * runs instead of whatever action the model picked (including none).
+     * Meant for deterministic safety refusals.
+     */
+    forceWhenValid?: boolean;
 }
 
 /**

@@ -19,19 +19,18 @@ export function assertSandboxRpcUrl(rpcUrl: string): URL {
         throw new Error("BUILDBEAR_RPC_URL is not a valid URL");
     }
 
+    // Local sandbox only (e.g. an anvil fork). Hosted RPCs are refused.
     const host = url.hostname;
     const local = host === "localhost" || host === "127.0.0.1";
-    const buildbear =
-        host === "rpc.buildbear.io" || host.endsWith(".buildbear.io");
 
-    if (!local && !buildbear) {
+    if (!local) {
         throw new Error(
-            "BUILDBEAR_RPC_URL must be a BuildBear sandbox RPC or localhost"
+            "BUILDBEAR_RPC_URL must be a local sandbox RPC (localhost or 127.0.0.1)"
         );
     }
 
-    if (!local && url.protocol !== "https:") {
-        throw new Error("BuildBear RPC must use https");
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+        throw new Error("BUILDBEAR_RPC_URL must use http or https");
     }
 
     return url;

@@ -11,7 +11,7 @@ export const sandboxStatusAction: Action = {
     name: "SANDBOX_STATUS",
     similes: ["CHECK_SANDBOX", "CHAIN_ID", "SANDBOX_BLOCK"],
     description:
-        "Read the BuildBear sandbox chain id and latest block from BUILDBEAR_RPC_URL. Read-only. Does not send a transaction.",
+        "Read the local sandbox chain id and latest block from BUILDBEAR_RPC_URL. Read-only. Does not send a transaction.",
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         const rpcUrl = runtime.getSetting("BUILDBEAR_RPC_URL");
         const text = message?.content?.text;

@@ -29,7 +29,7 @@ export {
 export const buildbearPlugin: Plugin = {
     name: "buildbear",
     description:
-        "Read-only BuildBear sandbox status, balance, faucet instructions, contract code, and view calls. The provider supplies chain id and latest block. No transfers, swaps, or bridges.",
+        "Read-only local sandbox (localhost RPC) status, balance, faucet instructions, contract code, and view calls. The provider supplies chain id and latest block. No transfers, swaps, or bridges.",
     actions: [
         sandboxStatusAction,
         sandboxBalanceAction,

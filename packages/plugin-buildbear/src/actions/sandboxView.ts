@@ -30,7 +30,7 @@ export const sandboxViewAction: Action = {
         "TOKEN_INFO",
     ],
     description:
-        "Read public views on a BuildBear sandbox contract with eth_call: name, symbol, decimals, and totalSupply. One call reads every view the user names, and token details means name, symbol, and decimals. Does not send a transaction.",
+        "Read public views on a local sandbox contract with eth_call: name, symbol, decimals, and totalSupply. One call reads every view the user names, and token details means name, symbol, and decimals. Does not send a transaction.",
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         const rpcUrl = runtime.getSetting("BUILDBEAR_RPC_URL");
         const text = messageText(message);

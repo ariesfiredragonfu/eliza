@@ -67,30 +67,39 @@ describe("sandbox URL and address checks", () => {
         );
     });
 
-    it("rejects a public host that is not BuildBear", () => {
+    it("rejects a public hosted RPC", () => {
         expect(() =>
             assertSandboxRpcUrl("https://mainnet.infura.io/v3/key")
-        ).toThrow(/BuildBear sandbox RPC or localhost/);
+        ).toThrow(/local sandbox RPC \(localhost or 127\.0\.0\.1\)/);
     });
 
-    it("rejects a host that only looks like BuildBear", () => {
+    it("rejects a host that only looks local", () => {
         expect(() =>
-            assertSandboxRpcUrl("https://rpc.buildbear.io.evil.com")
-        ).toThrow(/BuildBear sandbox RPC or localhost/);
+            assertSandboxRpcUrl("http://127.0.0.1.evil.com:8545")
+        ).toThrow(/local sandbox RPC \(localhost or 127\.0\.0\.1\)/);
     });
 
-    it("rejects a BuildBear RPC that is not https", () => {
-        expect(() => assertSandboxRpcUrl("http://rpc.buildbear.io/node")).toThrow(
-            /must use https/
+    it("rejects BuildBear hosted RPCs", () => {
+        expect(() =>
+            assertSandboxRpcUrl("https://rpc.buildbear.io/node")
+        ).toThrow(/local sandbox RPC/);
+        expect(() =>
+            assertSandboxRpcUrl("https://sandbox.buildbear.io/node")
+        ).toThrow(/local sandbox RPC/);
+    });
+
+    it("rejects a non-http scheme on localhost", () => {
+        expect(() => assertSandboxRpcUrl("ws://127.0.0.1:8545")).toThrow(
+            /must use http or https/
         );
     });
 
-    it("accepts a BuildBear https RPC and a localhost RPC", () => {
-        expect(
-            assertSandboxRpcUrl("https://rpc.buildbear.io/node").hostname
-        ).toBe("rpc.buildbear.io");
+    it("accepts localhost and 127.0.0.1 RPCs", () => {
         expect(assertSandboxRpcUrl("http://127.0.0.1:8545").hostname).toBe(
             "127.0.0.1"
+        );
+        expect(assertSandboxRpcUrl("http://localhost:8545").hostname).toBe(
+            "localhost"
         );
     });
 
@@ -270,6 +279,30 @@ describe("read-only refusal", () => {
         expect(await sandboxStatusAction.validate(runtime, msg(LOOKUP))).toBe(true);
     });
 
+    it("is forced and replaces the model's text", () => {
+        expect(sandboxRefuseTxAction.forceWhenValid).toBe(true);
+        expect(sandboxRefuseTxAction.suppressInitialMessage).toBe(true);
+    });
+
+    it("starts its reply with the required refusal sentence", async () => {
+        const replies: { text?: string }[] = [];
+        await sandboxRefuseTxAction.handler(
+            runtimeWith("http://127.0.0.1:8545"),
+            msg(SEND),
+            undefined,
+            undefined,
+            async (content) => {
+                replies.push(content);
+                return [];
+            }
+        );
+        expect(
+            replies[0]?.text?.startsWith(
+                "No. I'm read-only in the sandbox and can't send transactions"
+            )
+        ).toBe(true);
+    });
+
     it("refuses in words and makes no RPC call", async () => {
         const fetchMock = mockRpc({});
         const replies: { text?: string }[] = [];
@@ -338,7 +371,7 @@ describe("multi-view reads", () => {
             readSandboxViews("https://mainnet.infura.io/v3/key", ADDRESS, [
                 "name",
             ])
-        ).rejects.toThrow(/BuildBear sandbox RPC or localhost/);
+        ).rejects.toThrow(/local sandbox RPC \(localhost or 127\.0\.0\.1\)/);
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });
@@ -428,7 +461,7 @@ describe("sandbox provider", () => {
         );
 
         expect(text).toContain("Sandbox status is unavailable");
-        expect(text).toContain("BuildBear sandbox RPC or localhost");
+        expect(text).toContain("local sandbox RPC (localhost or 127.0.0.1)");
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });
