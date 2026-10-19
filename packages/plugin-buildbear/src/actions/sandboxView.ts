@@ -8,6 +8,7 @@ import {
 import {
     findContractAddress,
     findViewFunctions,
+    isFundMovingRequest,
     readSandboxViews,
 } from "../rpc.ts";
 
@@ -37,7 +38,8 @@ export const sandboxViewAction: Action = {
             typeof rpcUrl === "string" &&
             rpcUrl.length > 0 &&
             findContractAddress(text) !== null &&
-            findViewFunctions(text).length > 0
+            findViewFunctions(text).length > 0 &&
+            !isFundMovingRequest(text)
         );
     },
     handler: async (

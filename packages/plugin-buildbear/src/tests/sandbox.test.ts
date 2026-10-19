@@ -1,6 +1,9 @@
 import type { IAgentRuntime } from "@elizaos/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sandboxProvider } from "../providers/sandbox.ts";
+import { sandboxRefuseTxAction } from "../actions/sandboxRefuseTx.ts";
+import { sandboxStatusAction } from "../actions/sandboxStatus.ts";
+import { sandboxViewAction } from "../actions/sandboxView.ts";
 import {
     assertFaucetUrl,
     assertSandboxRpcUrl,
@@ -11,6 +14,7 @@ import {
     findViewFunction,
     findViewFunctions,
     formatWei,
+    isFundMovingRequest,
     readSandboxCode,
     readSandboxStatus,
     readSandboxView,
@@ -234,6 +238,54 @@ describe("view calls", () => {
             { to: ADDRESS, data: "0x06fdde03" },
             "latest",
         ]);
+    });
+});
+
+describe("read-only refusal", () => {
+    const msg = (text: string) => ({ content: { text } }) as never;
+    const SEND = "send 1 ETH to 0x000000000000000000000000000000000000dEaD";
+    const LOOKUP =
+        "Look up the USDC contract 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 name, symbol and decimals";
+
+    it("flags fund-moving requests and not lookups", () => {
+        expect(isFundMovingRequest(SEND)).toBe(true);
+        expect(isFundMovingRequest("swap ETH for USDC")).toBe(true);
+        expect(isFundMovingRequest("bridge to Base")).toBe(true);
+        expect(isFundMovingRequest(LOOKUP)).toBe(false);
+        expect(isFundMovingRequest("What's the sandbox status?")).toBe(false);
+        expect(isFundMovingRequest("How do I get test ETH?")).toBe(false);
+    });
+
+    it("offers the refusal, not reads, for a send", async () => {
+        const runtime = runtimeWith("http://127.0.0.1:8545");
+        expect(await sandboxRefuseTxAction.validate(runtime, msg(SEND))).toBe(true);
+        expect(await sandboxStatusAction.validate(runtime, msg(SEND))).toBe(false);
+        expect(await sandboxViewAction.validate(runtime, msg(SEND))).toBe(false);
+    });
+
+    it("keeps reads for a lookup and hides the refusal", async () => {
+        const runtime = runtimeWith("http://127.0.0.1:8545");
+        expect(await sandboxRefuseTxAction.validate(runtime, msg(LOOKUP))).toBe(false);
+        expect(await sandboxViewAction.validate(runtime, msg(LOOKUP))).toBe(true);
+        expect(await sandboxStatusAction.validate(runtime, msg(LOOKUP))).toBe(true);
+    });
+
+    it("refuses in words and makes no RPC call", async () => {
+        const fetchMock = mockRpc({});
+        const replies: { text?: string }[] = [];
+        await sandboxRefuseTxAction.handler(
+            runtimeWith("http://127.0.0.1:8545"),
+            msg(SEND),
+            undefined,
+            undefined,
+            async (content) => {
+                replies.push(content);
+                return [];
+            }
+        );
+        expect(replies[0]?.text).toMatch(/read-only/);
+        expect(replies[0]?.text).toMatch(/can't send transactions/);
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });
 

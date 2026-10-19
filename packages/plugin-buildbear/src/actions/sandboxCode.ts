@@ -5,7 +5,11 @@ import {
     Memory,
     State,
 } from "@elizaos/core";
-import { findContractAddress, readSandboxCode } from "../rpc.ts";
+import {
+    findContractAddress,
+    isFundMovingRequest,
+    readSandboxCode,
+} from "../rpc.ts";
 
 function messageText(message: Memory): string {
     const text = message.content?.text;
@@ -22,7 +26,8 @@ export const sandboxCodeAction: Action = {
         return (
             typeof rpcUrl === "string" &&
             rpcUrl.length > 0 &&
-            findContractAddress(messageText(message)) !== null
+            findContractAddress(messageText(message)) !== null &&
+            !isFundMovingRequest(messageText(message))
         );
     },
     handler: async (

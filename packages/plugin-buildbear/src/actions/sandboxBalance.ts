@@ -5,21 +5,23 @@ import {
     Memory,
     State,
 } from "@elizaos/core";
-import { readSandboxBalance } from "../rpc.ts";
+import { isFundMovingRequest, readSandboxBalance } from "../rpc.ts";
 
 export const sandboxBalanceAction: Action = {
     name: "SANDBOX_BALANCE",
     similes: ["CHECK_BALANCE", "TEST_ADDRESS_BALANCE"],
     description:
         "Read the native balance of BUILDBEAR_TEST_ADDRESS on the BuildBear sandbox. Read-only. Does not send a transaction.",
-    validate: async (runtime: IAgentRuntime) => {
+    validate: async (runtime: IAgentRuntime, message: Memory) => {
         const rpcUrl = runtime.getSetting("BUILDBEAR_RPC_URL");
         const address = runtime.getSetting("BUILDBEAR_TEST_ADDRESS");
+        const text = message?.content?.text;
         return (
             typeof rpcUrl === "string" &&
             rpcUrl.length > 0 &&
             typeof address === "string" &&
-            address.length > 0
+            address.length > 0 &&
+            !isFundMovingRequest(typeof text === "string" ? text : "")
         );
     },
     handler: async (

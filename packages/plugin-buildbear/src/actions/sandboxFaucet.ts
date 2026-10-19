@@ -5,16 +5,21 @@ import {
     Memory,
     State,
 } from "@elizaos/core";
-import { faucetInstructions } from "../rpc.ts";
+import { faucetInstructions, isFundMovingRequest } from "../rpc.ts";
 
 export const sandboxFaucetAction: Action = {
     name: "SANDBOX_FAUCET",
     similes: ["FAUCET_HELP", "GET_TEST_ETH", "SANDBOX_DRIP"],
     description:
         "Tell a person the BuildBear sandbox faucet URL and that they request the drip in the dashboard. Does not call the faucet or send a transaction.",
-    validate: async (runtime: IAgentRuntime) => {
+    validate: async (runtime: IAgentRuntime, message: Memory) => {
         const faucetUrl = runtime.getSetting("BUILDBEAR_FAUCET_URL");
-        return typeof faucetUrl === "string" && faucetUrl.length > 0;
+        const text = message?.content?.text;
+        return (
+            typeof faucetUrl === "string" &&
+            faucetUrl.length > 0 &&
+            !isFundMovingRequest(typeof text === "string" ? text : "")
+        );
     },
     handler: async (
         runtime: IAgentRuntime,

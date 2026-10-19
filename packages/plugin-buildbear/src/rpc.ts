@@ -1,5 +1,16 @@
 const WEI_PER_ETHER = 10n ** 18n;
 
+const FUND_MOVING_RE =
+    /\b(send|sending|sent|transfer|transferring|swap|swapping|bridge|bridging|withdraw|withdrawing|pay|paying|stake|staking|approve|approving|sign|signing|move\s+funds)\b/i;
+
+/**
+ * True when the text asks to move funds or sign: send, transfer, swap,
+ * bridge, withdraw, pay, stake, approve, or sign. This plugin refuses those.
+ */
+export function isFundMovingRequest(text: string): boolean {
+    return FUND_MOVING_RE.test(text);
+}
+
 export function assertSandboxRpcUrl(rpcUrl: string): URL {
     let url: URL;
     try {

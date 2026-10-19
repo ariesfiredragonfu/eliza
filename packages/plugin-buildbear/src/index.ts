@@ -2,6 +2,7 @@ import type { Plugin } from "@elizaos/core";
 import { sandboxBalanceAction } from "./actions/sandboxBalance.ts";
 import { sandboxCodeAction } from "./actions/sandboxCode.ts";
 import { sandboxFaucetAction } from "./actions/sandboxFaucet.ts";
+import { sandboxRefuseTxAction } from "./actions/sandboxRefuseTx.ts";
 import { sandboxStatusAction } from "./actions/sandboxStatus.ts";
 import { sandboxViewAction } from "./actions/sandboxView.ts";
 import { sandboxProvider } from "./providers/sandbox.ts";
@@ -16,6 +17,7 @@ export {
     findContractAddress,
     findViewFunction,
     formatWei,
+    isFundMovingRequest,
     readSandboxBalance,
     readSandboxCode,
     readSandboxStatus,
@@ -34,6 +36,7 @@ export const buildbearPlugin: Plugin = {
         sandboxFaucetAction,
         sandboxCodeAction,
         sandboxViewAction,
+        sandboxRefuseTxAction,
     ],
     evaluators: [],
     providers: [sandboxProvider],
