@@ -537,7 +537,35 @@ export class AgentRuntime implements IAgentRuntime {
         state?: State,
         callback?: HandlerCallback
     ): Promise<void> {
+        // A forced action (e.g. a safety refusal) whose validate() passes for
+        // the incoming message overrides whatever action the model picked.
+        let forcedAction: Action | undefined;
+        for (const candidate of this.actions) {
+            if (!candidate.forceWhenValid) continue;
+            try {
+                if (await candidate.validate(this, message, state)) {
+                    forcedAction = candidate;
+                    break;
+                }
+            } catch (error) {
+                elizaLogger.error(
+                    `Forced action ${candidate.name} validate failed`,
+                    error
+                );
+            }
+        }
+
         for (const response of responses) {
+            if (forcedAction && response.content) {
+                if (response.content.action !== forcedAction.name) {
+                    elizaLogger.warn(
+                        `Forcing action ${forcedAction.name} (model picked ${response.content.action || "none"})`
+                    );
+                }
+                // Mutate in place so callers holding this content see the forced action.
+                response.content.action = forcedAction.name;
+            }
+
             if (!response.content?.action) {
                 elizaLogger.warn("No action found in the response content.");
                 continue;
@@ -549,7 +577,7 @@ export class AgentRuntime implements IAgentRuntime {
 
             elizaLogger.success(`Normalized action: ${normalizedAction}`);
 
-            let action = this.actions.find(
+            let action = forcedAction ?? this.actions.find(
                 (a: { name: string }) =>
                     a.name
                         .toLowerCase()

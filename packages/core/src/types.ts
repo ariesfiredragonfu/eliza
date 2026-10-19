@@ -213,6 +213,7 @@ export type Models = {
     [ModelProviderName.VENICE]: Model;
     [ModelProviderName.AKASH_CHAT_API]: Model;
     [ModelProviderName.LIVEPEER]: Model;
+    [ModelProviderName.BONSAI]: Model;
 };
 
 /**
@@ -243,6 +244,8 @@ export enum ModelProviderName {
     VENICE = "venice",
     AKASH_CHAT_API = "akash_chat_api",
     LIVEPEER = "livepeer",
+    /** Local Ternary Bonsai 2 27B via PrismML llama.cpp */
+    BONSAI = "bonsai",
 }
 
 /**
@@ -425,6 +428,13 @@ export interface Action {
 
     /** Whether to suppress the initial message when this action is used */
     suppressInitialMessage?: boolean;
+
+    /**
+     * When true and validate() passes for the incoming message, this action
+     * runs instead of whatever action the model picked (including none).
+     * Meant for deterministic safety refusals.
+     */
+    forceWhenValid?: boolean;
 }
 
 /**

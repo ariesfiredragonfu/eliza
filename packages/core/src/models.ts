@@ -514,6 +514,22 @@ export const models: Models = {
             [ModelClass.IMAGE]: settings.LIVEPEER_IMAGE_MODEL || "ByteDance/SDXL-Lightning",
         },
     },
+    [ModelProviderName.BONSAI]: {
+        endpoint: settings.BONSAI_SERVER_URL || "http://127.0.0.1:8891/v1",
+        settings: {
+            stop: [],
+            maxInputTokens: 8192,
+            maxOutputTokens: 2048,
+            frequency_penalty: 0.0,
+            presence_penalty: 1.5,
+            temperature: 0.7,
+        },
+        model: {
+            [ModelClass.SMALL]: settings.BONSAI_MODEL || "bonsai-2-27b",
+            [ModelClass.MEDIUM]: settings.BONSAI_MODEL || "bonsai-2-27b",
+            [ModelClass.LARGE]: settings.BONSAI_MODEL || "bonsai-2-27b",
+        },
+    },
 };
 
 export function getModel(provider: ModelProviderName, type: ModelClass) {

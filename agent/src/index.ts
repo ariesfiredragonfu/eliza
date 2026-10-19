@@ -31,6 +31,7 @@ import {
 import { RedisClient } from "@elizaos/adapter-redis";
 import { zgPlugin } from "@elizaos/plugin-0g";
 import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
+import { buildbearPlugin } from "@elizaos/plugin-buildbear";
 import createGoatPlugin from "@elizaos/plugin-goat";
 // import { intifacePlugin } from "@elizaos/plugin-intiface";
 import { DirectClient } from "@elizaos/client-direct";
@@ -92,7 +93,10 @@ export function parseArguments(): {
     characters?: string;
 } {
     try {
-        return yargs(process.argv.slice(3))
+        // Skip node and the script path. Drop bare "--" separators so both
+        // `pnpm start --characters=...` and `pnpm start -- --characters=...` work.
+        const args = process.argv.slice(2).filter((arg) => arg !== "--");
+        return yargs(args)
             .option("character", {
                 type: "string",
                 description: "Path to the character JSON file",
@@ -246,6 +250,8 @@ export function getTokenForProvider(
         // no key needed for llama_local or gaianet
         case ModelProviderName.LLAMALOCAL:
             return "";
+        case ModelProviderName.BONSAI:
+            return "local";
         case ModelProviderName.OLLAMA:
             return "";
         case ModelProviderName.GAIANET:
@@ -510,7 +516,15 @@ export async function createAgent(
 
     let goatPlugin: any | undefined;
 
-    if (getSecret(character, "EVM_PRIVATE_KEY")) {
+    const web3Specialist = character.name === "Forge Lens";
+    const buildbearRpc = getSecret(character, "BUILDBEAR_RPC_URL");
+    if (web3Specialist) {
+        elizaLogger.info(
+            "Forge Lens specialist: sandbox plugin only; evm and goat stay off"
+        );
+    }
+
+    if (!web3Specialist && getSecret(character, "EVM_PRIVATE_KEY")) {
         goatPlugin = await createGoatPlugin((secret) =>
             getSecret(character, secret)
         );
@@ -540,11 +554,15 @@ export async function createAgent(
             getSecret(character, "NEAR_WALLET_SECRET_KEY")
                 ? nearPlugin
                 : null,
-            getSecret(character, "EVM_PUBLIC_KEY") ||
-            (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
+            !web3Specialist &&
+            (getSecret(character, "EVM_PUBLIC_KEY") ||
+                (getSecret(character, "WALLET_PUBLIC_KEY") &&
+                    getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith(
+                        "0x"
+                    )))
                 ? evmPlugin
                 : null,
+            buildbearRpc ? buildbearPlugin : null,
             (getSecret(character, "SOLANA_PUBLIC_KEY") ||
                 (getSecret(character, "WALLET_PUBLIC_KEY") &&
                     !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith(

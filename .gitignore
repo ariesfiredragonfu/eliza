@@ -5,6 +5,8 @@ node_modules
 .env.production
 .env.local
 .env_main
+.env.*
+!.env.example
 concatenated-output.ts
 embedding-cache.json
 packages/plugin-buttplug/intiface-engine
@@ -13,8 +15,9 @@ packages/plugin-buttplug/intiface-engine
 .DS_Store
 
 dist/
-# Allow models directory but ignore model files
+# Allow models directory but ignore model files and the local Bonsai runtime
 models/*.gguf
+models/runtime/
 
 cookies.json
 
@@ -39,7 +42,8 @@ timeline_cache.json
 
 *.sqlite
 
-characters/
+characters/*
+!characters/web3.character.json
 
 packages/core/src/providers/cache
 packages/core/src/providers/cache/*
