@@ -26,6 +26,7 @@ import {
     parseShouldRespondFromText,
     parseActionResponseFromText,
 } from "./parsing.ts";
+import { ensureBonsaiServer } from "./bonsaiServer.ts";
 import settings from "./settings.ts";
 import {
     Content,
@@ -167,6 +168,58 @@ async function truncateTiktoken(
  * @returns The completed message.
  */
 
+const BONSAI_ROUTED_CLASSES = new Set<string>([
+    ModelClass.SMALL,
+    ModelClass.MEDIUM,
+]);
+
+/**
+ * Small and medium calls go to local Bonsai when BONSAI_SERVER_URL is set.
+ * Large calls stay on the character provider.
+ */
+function resolveRoutedProvider(
+    runtime: IAgentRuntime,
+    modelClass: string,
+    disableBonsaiRoute = false
+): ModelProviderName {
+    if (
+        !disableBonsaiRoute &&
+        settings.BONSAI_SERVER_URL &&
+        BONSAI_ROUTED_CLASSES.has(modelClass)
+    ) {
+        return ModelProviderName.BONSAI;
+    }
+    return runtime.modelProvider;
+}
+
+async function selectProvider(
+    runtime: IAgentRuntime,
+    modelClass: string,
+    disableBonsaiRoute = false
+): Promise<ModelProviderName> {
+    const routed = resolveRoutedProvider(
+        runtime,
+        modelClass,
+        disableBonsaiRoute
+    );
+    if (routed !== ModelProviderName.BONSAI) return routed;
+
+    const ready = await ensureBonsaiServer();
+    if (ready) return ModelProviderName.BONSAI;
+
+    if (runtime.modelProvider === ModelProviderName.BONSAI) {
+        elizaLogger.error(
+            "Bonsai server is not running and could not be started."
+        );
+        return ModelProviderName.BONSAI;
+    }
+
+    elizaLogger.warn(
+        "Bonsai server did not start. Using the character model provider."
+    );
+    return runtime.modelProvider;
+}
+
 export async function generateText({
     runtime,
     context,
@@ -176,6 +229,7 @@ export async function generateText({
     maxSteps = 1,
     stop,
     customSystemPrompt,
+    disableBonsaiRoute = false,
 }: {
     runtime: IAgentRuntime;
     context: string;
@@ -185,11 +239,14 @@ export async function generateText({
     maxSteps?: number;
     stop?: string[];
     customSystemPrompt?: string;
+    disableBonsaiRoute?: boolean;
 }): Promise<string> {
     if (!context) {
         console.error("generateText context is empty");
         return "";
     }
+
+    const sourceContext = context;
 
     elizaLogger.log("Generating text...");
 
@@ -198,9 +255,16 @@ export async function generateText({
         model: modelClass,
     });
 
-    const provider = runtime.modelProvider;
+    const provider = await selectProvider(
+        runtime,
+        modelClass,
+        disableBonsaiRoute
+    );
     const endpoint =
-        runtime.character.modelEndpointOverride || models[provider].endpoint;
+        provider === ModelProviderName.BONSAI
+            ? models[provider].endpoint
+            : runtime.character.modelEndpointOverride ||
+              models[provider].endpoint;
     let model = models[provider].model[modelClass];
 
     // allow character.json settings => secrets to override models
@@ -291,7 +355,8 @@ export async function generateText({
         modelConfiguration?.experimental_telemetry ||
         models[provider].settings.experimental_telemetry;
 
-    const apiKey = runtime.token;
+    const apiKey =
+        provider === ModelProviderName.BONSAI ? "local" : runtime.token;
 
     try {
         elizaLogger.debug(
@@ -310,6 +375,7 @@ export async function generateText({
         switch (provider) {
             // OPENAI & LLAMACLOUD shared same structure.
             case ModelProviderName.OPENAI:
+            case ModelProviderName.BONSAI:
             case ModelProviderName.ALI_BAILIAN:
             case ModelProviderName.VOLENGINE:
             case ModelProviderName.LLAMACLOUD:
@@ -804,6 +870,26 @@ export async function generateText({
 
         return response;
     } catch (error) {
+        if (
+            !disableBonsaiRoute &&
+            provider === ModelProviderName.BONSAI &&
+            runtime.modelProvider !== ModelProviderName.BONSAI
+        ) {
+            elizaLogger.warn(
+                "Local Bonsai request failed. Using the character model provider."
+            );
+            return generateText({
+                runtime,
+                context: sourceContext,
+                modelClass,
+                tools,
+                onStepFinish,
+                maxSteps,
+                stop,
+                customSystemPrompt,
+                disableBonsaiRoute: true,
+            });
+        }
         elizaLogger.error("Error in generateText:", error);
         throw error;
     }
@@ -1522,6 +1608,7 @@ export interface GenerationOptions {
     stop?: string[];
     mode?: "auto" | "json" | "tool";
     experimental_providerMetadata?: Record<string, unknown>;
+    disableBonsaiRoute?: boolean;
 }
 
 /**
@@ -1553,6 +1640,7 @@ export const generateObject = async ({
     schemaDescription,
     stop,
     mode = "json",
+    disableBonsaiRoute = false,
 }: GenerationOptions): Promise<GenerateObjectResult<unknown>> => {
     if (!context) {
         const errorMessage = "generateObject context is empty";
@@ -1560,7 +1648,12 @@ export const generateObject = async ({
         throw new Error(errorMessage);
     }
 
-    const provider = runtime.modelProvider;
+    const sourceContext = context;
+    const provider = await selectProvider(
+        runtime,
+        modelClass,
+        disableBonsaiRoute
+    );
     const model = models[provider].model[modelClass];
     const temperature = models[provider].settings.temperature;
     const frequency_penalty = models[provider].settings.frequency_penalty;
@@ -1569,7 +1662,8 @@ export const generateObject = async ({
     const max_response_length = models[provider].settings.maxOutputTokens;
     const experimental_telemetry =
         models[provider].settings.experimental_telemetry;
-    const apiKey = runtime.token;
+    const apiKey =
+        provider === ModelProviderName.BONSAI ? "local" : runtime.token;
 
     try {
         context = await trimTokens(context, max_context_length, runtime);
@@ -1600,6 +1694,26 @@ export const generateObject = async ({
 
         return response;
     } catch (error) {
+        if (
+            !disableBonsaiRoute &&
+            provider === ModelProviderName.BONSAI &&
+            runtime.modelProvider !== ModelProviderName.BONSAI
+        ) {
+            elizaLogger.warn(
+                "Local Bonsai object request failed. Using the character model provider."
+            );
+            return generateObject({
+                runtime,
+                context: sourceContext,
+                modelClass,
+                schema,
+                schemaName,
+                schemaDescription,
+                stop,
+                mode,
+                disableBonsaiRoute: true,
+            });
+        }
         console.error("Error in generateObject:", error);
         throw error;
     }
@@ -1634,6 +1748,8 @@ export async function handleProvider(
 ): Promise<GenerateObjectResult<unknown>> {
     const { provider, runtime, context, modelClass } = options;
     switch (provider) {
+        case ModelProviderName.BONSAI:
+            return await handleBonsai(options);
         case ModelProviderName.OPENAI:
         case ModelProviderName.ETERNALAI:
         case ModelProviderName.ALI_BAILIAN:
@@ -1671,12 +1787,29 @@ export async function handleProvider(
         }
     }
 }
-/**
- * Handles object generation for OpenAI.
- *
- * @param {ProviderOptions} options - Options specific to OpenAI.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
+async function handleBonsai({
+    model,
+    apiKey,
+    schema,
+    schemaName,
+    schemaDescription,
+    mode,
+    modelOptions,
+}: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
+    const openai = createOpenAI({
+        apiKey,
+        baseURL: models[ModelProviderName.BONSAI].endpoint,
+    });
+    return await aiGenerateObject({
+        model: openai.languageModel(model),
+        schema,
+        schemaName,
+        schemaDescription,
+        mode,
+        ...modelOptions,
+    });
+}
+
 async function handleOpenAI({
     model,
     apiKey,

@@ -213,6 +213,7 @@ export type Models = {
     [ModelProviderName.VENICE]: Model;
     [ModelProviderName.AKASH_CHAT_API]: Model;
     [ModelProviderName.LIVEPEER]: Model;
+    [ModelProviderName.BONSAI]: Model;
 };
 
 /**
@@ -243,6 +244,8 @@ export enum ModelProviderName {
     VENICE = "venice",
     AKASH_CHAT_API = "akash_chat_api",
     LIVEPEER = "livepeer",
+    /** Local Ternary Bonsai 2 27B via PrismML llama.cpp */
+    BONSAI = "bonsai",
 }
 
 /**
