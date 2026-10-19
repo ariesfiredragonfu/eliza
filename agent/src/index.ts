@@ -31,6 +31,7 @@ import {
 import { RedisClient } from "@elizaos/adapter-redis";
 import { zgPlugin } from "@elizaos/plugin-0g";
 import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
+import { buildbearPlugin } from "@elizaos/plugin-buildbear";
 import createGoatPlugin from "@elizaos/plugin-goat";
 // import { intifacePlugin } from "@elizaos/plugin-intiface";
 import { DirectClient } from "@elizaos/client-direct";
@@ -512,7 +513,15 @@ export async function createAgent(
 
     let goatPlugin: any | undefined;
 
-    if (getSecret(character, "EVM_PRIVATE_KEY")) {
+    const web3Specialist = character.name === "Kaito Web3";
+    const buildbearRpc = getSecret(character, "BUILDBEAR_RPC_URL");
+    if (web3Specialist) {
+        elizaLogger.info(
+            "Kaito Web3 specialist: sandbox plugin only; evm and goat stay off"
+        );
+    }
+
+    if (!web3Specialist && getSecret(character, "EVM_PRIVATE_KEY")) {
         goatPlugin = await createGoatPlugin((secret) =>
             getSecret(character, secret)
         );
@@ -542,11 +551,15 @@ export async function createAgent(
             getSecret(character, "NEAR_WALLET_SECRET_KEY")
                 ? nearPlugin
                 : null,
-            getSecret(character, "EVM_PUBLIC_KEY") ||
-            (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
+            !web3Specialist &&
+            (getSecret(character, "EVM_PUBLIC_KEY") ||
+                (getSecret(character, "WALLET_PUBLIC_KEY") &&
+                    getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith(
+                        "0x"
+                    )))
                 ? evmPlugin
                 : null,
+            buildbearRpc ? buildbearPlugin : null,
             (getSecret(character, "SOLANA_PUBLIC_KEY") ||
                 (getSecret(character, "WALLET_PUBLIC_KEY") &&
                     !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith(

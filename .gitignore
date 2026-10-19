@@ -5,6 +5,8 @@ node_modules
 .env.production
 .env.local
 .env_main
+.env.*
+!.env.example
 concatenated-output.ts
 embedding-cache.json
 packages/plugin-buttplug/intiface-engine
@@ -40,7 +42,8 @@ timeline_cache.json
 
 *.sqlite
 
-characters/
+characters/*
+!characters/web3.character.json
 
 packages/core/src/providers/cache
 packages/core/src/providers/cache/*
